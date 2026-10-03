@@ -1,8 +1,12 @@
 <Solution>
-  <Folder Name="/src/">
-    <Project Path="src/ZnunyStats.Api/ZnunyStats.Api.csproj" />
+  <Folder Name="/Solution Items/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/ZnunyStats.Tests/ZnunyStats.Tests.csproj" />
+    <Project Path="ZnunyStats.UnitTests/ZnunyStats.UnitTests.csproj" />
   </Folder>
+  <Project Path="ZnunyStats.Api/ZnunyStats.Api.csproj" />
+  <Project Path="ZnunyStats.Domain/ZnunyStats.Domain.csproj" />
+  <Project Path="ZnunyStats.Reports/ZnunyStats.Reports.csproj" />
 </Solution>

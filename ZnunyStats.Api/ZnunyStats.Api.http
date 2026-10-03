@@ -1,0 +1,19 @@
+@ZnunyStats_HostAddress = http://localhost:5080
+
+GET {{ZnunyStats_HostAddress}}/health
+
+###
+
+GET {{ZnunyStats_HostAddress}}/api/v1/catalogs
+Accept: application/json
+
+###
+
+GET {{ZnunyStats_HostAddress}}/api/v1/analytics/overview?from=2026-09-01&to=2026-09-30
+Accept: application/json
+
+###
+
+GET {{ZnunyStats_HostAddress}}/api/v1/reports/servicio?format=pdf&from=2026-09-01&to=2026-09-30
+
+###
