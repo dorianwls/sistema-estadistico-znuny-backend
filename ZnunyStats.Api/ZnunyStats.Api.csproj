@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="ZnunyStats.UnitTests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!-- Necesario para la zona horaria America/Managua y la cultura es-NI. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="FluentValidation" />
+    <!-- Fija la dependencia de Swashbuckle por encima de 2.7.4 (GHSA-v5pm-xwqc-g5wc). -->
+    <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ZnunyStats.Domain\ZnunyStats.Domain.csproj" />
+    <ProjectReference Include="..\ZnunyStats.Reports\ZnunyStats.Reports.csproj" />
+  </ItemGroup>
+
+</Project>

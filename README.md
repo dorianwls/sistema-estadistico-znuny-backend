@@ -2,7 +2,7 @@
 
 API REST en **.NET 10 / ASP.NET Core** que lee la base PostgreSQL de Znuny (**solo lectura**) y calcula la
 **eficacia, eficiencia y efectividad** del soporte y de cada agente. La consume el frontend
-`dashboard-estaditico-web`.
+`dashboard-estadistico-tanstack`.
 
 ## Ejecutar
 
@@ -10,11 +10,13 @@ Requisitos: SDK de .NET 10 con el runtime de ASP.NET Core (en Arch/CachyOS: `asp
 y la base del laboratorio levantada (`sistema-estadistico-znuny-lab`, puerto 5433).
 
 ```bash
-dotnet run --project src/ZnunyStats.Api      # http://localhost:5080
-dotnet test                                  # pruebas de las fórmulas
+dotnet run --project ZnunyStats.Api      # http://localhost:5080 (Swagger UI en la raíz, solo en desarrollo)
+dotnet test                              # pruebas de las fórmulas (xUnit v3 + Microsoft Testing Platform)
 ```
 
-Frontend: en `dashboard-estaditico-web`, `pnpm dev` (usa `NEXT_PUBLIC_API_URL`, por defecto `http://localhost:5080`).
+Frontend: en `dashboard-estadistico-tanstack`, `npm run dev` (puerto 3001; en desarrollo usa un proxy de Vite hacia
+`VITE_API_URL`, por defecto `http://localhost:5080`). Fuera de ese proxy, los orígenes permitidos se configuran en
+`AllowedOrigins`.
 
 La cadena de conexión de desarrollo está en `appsettings.Development.json`. En otro entorno, usá la variable
 `ConnectionStrings__Znuny`. Mantené siempre `Options=-c default_transaction_read_only=on`: PostgreSQL rechaza
@@ -22,20 +24,42 @@ cualquier escritura de la sesión, además de que el código solo contiene `SELE
 
 ## Cómo está organizado
 
+Misma estructura que `sisprenic_backend`: un proyecto por responsabilidad y, dentro de la API, un módulo por
+funcionalidad con una carpeta por caso de uso (`Endpoint.cs`, más `Handler.cs` / `Response.cs` cuando hacen falta).
+
 ```
-src/ZnunyStats.Api/
-  Data/ZnunyQueries.cs          Todo el SQL. Una fila de "hechos" por ticket, reconstruida desde ticket_history.
-  Analytics/TicketStore.cs      Clasifica cada ticket (estado, unidad, agente responsable, objetivo) y lo cachea.
-  Analytics/Kpis.cs             Las fórmulas. Funciones puras, cubiertas por tests.
-  Analytics/AnalyticsService.cs Filtros, períodos y respuestas de cada módulo.
-  Endpoints/ApiEndpoints.cs     Rutas HTTP.
-  Reports/ExcelReports.cs       Exportación a Excel.
-  appsettings.json              Reglas de negocio configurables (sección "Estadisticas").
+ZnunyStats.slnx
+Directory.Build.props / Directory.Packages.props   Framework y versiones de paquetes centralizadas
+ZnunyStats.Domain/
+  Entities/      TicketRecord, TicketStatus: un ticket ya clasificado.
+  Metrics/       Kpis (las fórmulas, funciones puras), RateKpi, DurationKpi, Indicators, Outcome.
+  ReadModels/    Respuestas compartidas por la API y los reportes (Overview, Agents, DataQuality, TicketRow…).
+ZnunyStats.Reports/
+  Abstractions/  IReportRenderer.
+  Content/       ReportContent (todo lo que lleva un reporte) y ReportText (formatos compartidos).
+  Infrastructure/ PdfReportRenderer (QuestPDF) y ExcelReportRenderer (ClosedXML).
+  Extensions/    AddReporting().
+ZnunyStats.Api/
+  Program.cs     Serilog, servicios, middleware.
+  Common/        StatsOptions, ZnunyClock (zona horaria), manejo global de errores, filtro de validación.
+  Database/      ZnunyQueries (todo el SQL, solo lectura), filas y health check.
+  Extensions/    Registro de servicios, mapeo de endpoints, errores, rate limiting, Swagger.
+  Modules/
+    Shared/      TicketQuery (+ validador), Period, TicketStore (lee y cachea Znuny), TicketAnalytics (piezas comunes).
+    Analytics/GetOverview   Agents/GetAgents   Tickets/GetTickets, GetTicketTimeline
+    Locations/GetLocations  Catalogs/GetCatalogs  DataQuality/GetDataQuality
+    Reports/ExportReport    Sync/RefreshData
+  appsettings.json  Reglas de negocio configurables (sección "Estadisticas").
+ZnunyStats.UnitTests/   Pruebas de las fórmulas.
 ```
 
 Flujo: **SQL → hechos por ticket → clasificación → fórmulas → JSON**. El volumen actual (cientos de tickets) se
 procesa en memoria y se cachea 60 s. Si algún día hay cientos de miles de tickets, el paso natural es mover el
 filtro por fecha al SQL; las fórmulas no cambian.
+
+Los filtros se validan en un solo lugar (`TicketQueryValidator`, FluentValidation): un error responde 400 con el
+mensaje en `detail`. Los errores no controlados pasan por `GlobalExceptionHandler` (ProblemDetails); si la base de
+Znuny no responde, 503. Los reportes tienen un límite de 10 por minuto por IP.
 
 ## Indicadores
 
@@ -89,8 +113,8 @@ Filtros comunes: `from`, `to` (yyyy-MM-dd, inclusivos; por defecto, últimos 30 
 | GET | `/tickets/{id}/timeline` | Historial legible de un ticket |
 | GET | `/locations` | Módulo Mapa institucional |
 | GET | `/data-quality` | Limitaciones de los datos |
-| GET | `/reports/{servicio\|atencion\|agentes}` | Excel con hoja de filtros |
+| GET | `/reports/{servicio\|atencion\|agentes}?format=xlsx\|pdf` | Excel para analizar o PDF para compartir |
 | POST | `/refresh` | Descarta la caché (no escribe en Znuny) |
-| GET | `/health` | Estado de la conexión |
+| GET | `/health` | Estado de la conexión (`Healthy` / `Unhealthy`) |
 
-En desarrollo, el documento OpenAPI está en `/openapi/v1.json`.
+En desarrollo, Swagger UI está en la raíz (`/`) y el documento OpenAPI en `/swagger/v1/swagger.json`.
